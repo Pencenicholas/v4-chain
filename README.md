@@ -1,4 +1,12 @@
-<p align="center"><img src="https://dydx.exchange/icon.svg?" width="256" /></p>
+[grpc]
+# Enable grpc. The Cosmos gRPC service is used by various daemon processes,
+# and must be enabled in order for the protocol to operate:
+enable = true
+# Non-standard gRPC ports are not supported at this time. Please run on port 9090, which is the default
+# port specified in the config file.
+# Note: grpc can be also be configured via start flags. Be careful not to change the default settings
+# with either of the following flags: `--grpc.enable`, `--grpc.address`.
+address = "0.0.0.0:9090""><img src="https://dydx.exchange/icon.svg?" width="256" /></p>
 
 <h1 align="center">dYdX Chain</h1>
 
@@ -356,4 +364,17 @@ fsync = "false"
 #
 # Note, this configuration only applies to SDK built-in app-side mempool
 # implementations.
-max-txs = 5000
+max-txs = 5000### Gas Prices ###
+minimum-gas-prices = "0.025ibc/8E27BA2D5493AF5636760E354E46004562C46AB7EC0CC4C1CA14E9E20E2545B5,12500000000$NATIVE_TOKEN_DENOM"
+
+### Pruning ###
+pruning = "custom"
+# Small numbers >= "2" for validator nodes.
+# Larger numbers could be used for full-nodes if they are used for historical queries.
+pruning-keep-recent = "7"
+# Any prime number between "13" and "97", inclusive.
+pruning-interval = "17"dydxprotocold start --p2p.seeds="..." --bridge-daemon-eth-rpc-endpoint="<eth rpc endpoint>" --non-validating-full-node=true# For the deployment by DYDX token holders
+# CHAIN_ID=dydx-mainnet-1
+
+# For testnet
+CHAIN_ID=dydx-testnet-4
