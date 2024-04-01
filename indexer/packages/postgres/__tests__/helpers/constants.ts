@@ -41,6 +41,7 @@ import {
   OrderType,
   PerpetualMarketCreateObject,
   PerpetualMarketStatus,
+  PerpetualMarketType,
   PerpetualPositionCreateObject,
   PerpetualPositionStatus,
   PnlTicksCreateObject,
@@ -179,6 +180,16 @@ export const defaultAssetPositionId2: string = AssetPositionTable.uuid(
   defaultAssetPosition2.subaccountId,
   defaultAssetPosition2.assetId,
 );
+export const isolatedSubaccountAssetPosition: AssetPositionCreateObject = {
+  subaccountId: isolatedSubaccountId,
+  assetId: '0',
+  size: '5000',
+  isLong: true,
+};
+export const isolatedSubaccountAssetPositionId: string = AssetPositionTable.uuid(
+  isolatedSubaccountAssetPosition.subaccountId,
+  isolatedSubaccountAssetPosition.assetId,
+);
 
 // ============== PerpetualMarkets ==============
 
@@ -198,6 +209,7 @@ export const defaultPerpetualMarket: PerpetualMarketCreateObject = {
   subticksPerTick: 100,
   stepBaseQuantums: 10,
   liquidityTierId: 0,
+  marketType: PerpetualMarketType.CROSS,
 };
 export const defaultPerpetualMarket2: PerpetualMarketCreateObject = {
   id: '1',
@@ -215,6 +227,7 @@ export const defaultPerpetualMarket2: PerpetualMarketCreateObject = {
   subticksPerTick: 10,
   stepBaseQuantums: 1,
   liquidityTierId: 0,
+  marketType: PerpetualMarketType.CROSS,
 };
 export const defaultPerpetualMarket3: PerpetualMarketCreateObject = {
   id: '2',
@@ -232,6 +245,7 @@ export const defaultPerpetualMarket3: PerpetualMarketCreateObject = {
   subticksPerTick: 10,
   stepBaseQuantums: 1,
   liquidityTierId: 0,
+  marketType: PerpetualMarketType.CROSS,
 };
 
 export const isolatedPerpetualMarket: PerpetualMarketCreateObject = {
@@ -250,6 +264,7 @@ export const isolatedPerpetualMarket: PerpetualMarketCreateObject = {
   subticksPerTick: 10,
   stepBaseQuantums: 1,
   liquidityTierId: 0,
+  marketType: PerpetualMarketType.ISOLATED,
 };
 
 export const isolatedPerpetualMarket2: PerpetualMarketCreateObject = {
@@ -268,6 +283,7 @@ export const isolatedPerpetualMarket2: PerpetualMarketCreateObject = {
   subticksPerTick: 10,
   stepBaseQuantums: 1,
   liquidityTierId: 0,
+  marketType: PerpetualMarketType.ISOLATED,
 };
 
 // ============== Orders ==============
@@ -445,6 +461,28 @@ export const defaultPerpetualPositionId: string = PerpetualPositionTable.uuid(
   defaultPerpetualPosition.openEventId,
 );
 
+export const isolatedPerpetualPosition: PerpetualPositionCreateObject = {
+  subaccountId: isolatedSubaccountId,
+  perpetualId: isolatedPerpetualMarket.id,
+  side: PositionSide.LONG,
+  status: PerpetualPositionStatus.OPEN,
+  size: '10',
+  maxSize: '25',
+  entryPrice: '1.5',
+  sumOpen: '10',
+  sumClose: '0',
+  createdAt: createdDateTime.toISO(),
+  createdAtHeight: createdHeight,
+  openEventId: defaultTendermintEventId,
+  lastEventId: defaultTendermintEventId2,
+  settledFunding: '200000',
+};
+
+export const isolatedPerpetualPositionId: string = PerpetualPositionTable.uuid(
+  isolatedPerpetualPosition.subaccountId,
+  isolatedPerpetualPosition.openEventId,
+);
+
 // ============== Fills ==============
 
 export const defaultFill: FillCreateObject = {
@@ -605,7 +643,7 @@ export const isolatedMarket: MarketCreateObject = {
   pair: 'ISO-USD',
   exponent: -12,
   minPriceChangePpm: 50,
-  oraclePrice: '0.000000075',
+  oraclePrice: '1.00',
 };
 
 export const isolatedMarket2: MarketCreateObject = {
@@ -708,6 +746,22 @@ export const defaultFundingIndexUpdateId: string = FundingIndexUpdatesTable.uuid
   defaultFundingIndexUpdate.effectiveAtHeight,
   defaultFundingIndexUpdate.eventId,
   defaultFundingIndexUpdate.perpetualId,
+);
+
+export const isolatedMarketFundingIndexUpdate: FundingIndexUpdatesCreateObject = {
+  perpetualId: isolatedPerpetualMarket.id,
+  eventId: defaultTendermintEventId,
+  rate: '0.0004',
+  oraclePrice: '10000',
+  fundingIndex: '10200',
+  effectiveAt: createdDateTime.toISO(),
+  effectiveAtHeight: createdHeight,
+};
+
+export const isolatedMarketFundingIndexUpdateId: string = FundingIndexUpdatesTable.uuid(
+  isolatedMarketFundingIndexUpdate.effectiveAtHeight,
+  isolatedMarketFundingIndexUpdate.eventId,
+  isolatedMarketFundingIndexUpdate.perpetualId,
 );
 
 // ========= Compliance Data ==========

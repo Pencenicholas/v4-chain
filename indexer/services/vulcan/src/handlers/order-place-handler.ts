@@ -14,9 +14,11 @@ import {
   placeOrder,
   PlaceOrderResult,
   StatefulOrderUpdatesCache,
+  convertToRedisOrder,
 } from '@dydxprotocol-indexer/redis';
 import {
   getOrderIdHash,
+  isLongTermOrder,
   isStatefulOrder,
   ORDER_FLAG_SHORT_TERM,
   requiresImmediateExecution,
@@ -30,13 +32,12 @@ import {
   RedisOrder,
 } from '@dydxprotocol-indexer/v4-protos';
 import Big from 'big.js';
-import { Message } from 'kafkajs';
+import { IHeaders, Message } from 'kafkajs';
 
 import config from '../config';
 import { redisClient } from '../helpers/redis/redis-controller';
 import { sendMessageWrapper } from '../lib/send-message-helper';
 import { Handler } from './handler';
-import { convertToRedisOrder } from './helpers';
 
 /**
  * Handler for OrderPlace messages.
@@ -51,7 +52,7 @@ import { convertToRedisOrder } from './helpers';
  *   being greater than or equal to the expiry of the order in the OrderPlace message, return
  */
 export class OrderPlaceHandler extends Handler {
-  protected async handle(update: OffChainUpdateV1): Promise<void> {
+  protected async handle(update: OffChainUpdateV1, headers: IHeaders): Promise<void> {
     logger.info({
       at: 'OrderPlaceHandler#handle',
       message: 'Received OffChainUpdate with OrderPlace.',
@@ -120,7 +121,12 @@ export class OrderPlaceHandler extends Handler {
 
     // TODO(CLOB-597): Remove this logic and log erorrs once best-effort-open is not sent for
     // stateful orders in the protocol
-    if (this.shouldSendSubaccountMessage(orderPlace, placeOrderResult, placementStatus)) {
+    if (this.shouldSendSubaccountMessage(
+      orderPlace,
+      placeOrderResult,
+      placementStatus,
+      redisOrder,
+    )) {
       // TODO(IND-171): Determine whether we should always be sending a message, even when the cache
       // isn't updated.
       // For stateful and conditional orders, look the order up in the db for the createdAtHeight
@@ -136,7 +142,7 @@ export class OrderPlaceHandler extends Handler {
           });
           throw new Error(`Stateful order not found in database: ${orderUuid}`);
         }
-        await this.sendCachedOrderUpdate(orderUuid);
+        await this.sendCachedOrderUpdate(orderUuid, headers);
       }
       const subaccountMessage: Message = {
         value: createSubaccountWebsocketMessage(
@@ -145,6 +151,9 @@ export class OrderPlaceHandler extends Handler {
           perpetualMarket,
           placementStatus,
         ),
+        headers: {
+          message_received_timestamp: headers.message_received_timestamp,
+        },
       };
       sendMessageWrapper(subaccountMessage, KafkaTopics.TO_WEBSOCKETS_SUBACCOUNTS);
     }
@@ -158,6 +167,9 @@ export class OrderPlaceHandler extends Handler {
           perpetualMarket,
           updatedQuantums,
         ),
+        headers: {
+          message_received_timestamp: headers.message_received_timestamp,
+        },
       };
       sendMessageWrapper(orderbookMessage, KafkaTopics.TO_WEBSOCKETS_ORDERBOOKS);
     }
@@ -273,7 +285,15 @@ export class OrderPlaceHandler extends Handler {
     orderPlace: OrderPlaceV1,
     placeOrderResult: PlaceOrderResult,
     placementStatus: OrderPlaceV1_OrderPlacementStatus,
+    redisOrder: RedisOrder,
   ): boolean {
+    if (
+      isLongTermOrder(redisOrder.order!.orderId!.orderFlags) &&
+      !config.SEND_SUBACCOUNT_WEBSOCKET_MESSAGE_FOR_STATEFUL_ORDERS
+    ) {
+      return false;
+    }
+
     const orderFlags: number = orderPlace.order!.orderId!.orderFlags;
     const status: OrderPlaceV1_OrderPlacementStatus = orderPlace.placementStatus;
     // Best-effort-opened status should only be sent for short-term orders
@@ -320,6 +340,7 @@ export class OrderPlaceHandler extends Handler {
    */
   protected async sendCachedOrderUpdate(
     orderId: string,
+    headers: IHeaders,
   ): Promise<void> {
     const cachedOrderUpdate: OrderUpdateV1 | undefined = await StatefulOrderUpdatesCache
       .removeStatefulOrderUpdate(
@@ -337,6 +358,10 @@ export class OrderPlaceHandler extends Handler {
       value: Buffer.from(
         Uint8Array.from(OffChainUpdateV1.encode({ orderUpdate: cachedOrderUpdate }).finish()),
       ),
+      headers: {
+        message_received_timestamp: headers.message_received_timestamp,
+        event_type: String(headers.event_type),
+      },
     };
     sendMessageWrapper(orderUpdateMessage, KafkaTopics.TO_VULCAN);
   }
